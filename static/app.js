@@ -5,9 +5,32 @@
   const template = document.getElementById("vehicle-card-template");
   const errorBox = document.getElementById("error-box");
   const resultsEl = document.getElementById("results");
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeLabel = themeToggle.querySelector(".theme-label");
   let vehicleSeq = 0;
   let yearsCache = null;
   let savedVehiclesCache = null;
+
+  function setTheme(theme, remember = true) {
+    const isDark = theme === "dark";
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    themeToggle.setAttribute("aria-pressed", String(isDark));
+    themeToggle.setAttribute("aria-label", `Switch to ${isDark ? "light" : "dark"} theme`);
+    themeLabel.textContent = isDark ? "Light" : "Dark";
+    document.querySelector('meta[name="theme-color"]').content = isDark ? "#071014" : "#f3f6f0";
+    if (remember) {
+      try {
+        localStorage.setItem("fuelCompareTheme", isDark ? "dark" : "light");
+      } catch (_storageErr) {
+        // Theme selection still works when storage is unavailable.
+      }
+    }
+  }
+
+  setTheme(document.documentElement.dataset.theme || "light", false);
+  themeToggle.addEventListener("click", () => {
+    setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  });
 
   async function fetchJSON(url, options) {
     const resp = await fetch(url, options);

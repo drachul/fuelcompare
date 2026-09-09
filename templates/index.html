@@ -4,99 +4,161 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fuel Compare</title>
+<meta name="theme-color" content="#f3f6f0">
+<script>
+  (() => {
+    try {
+      const savedTheme = localStorage.getItem("fuelCompareTheme");
+      document.documentElement.dataset.theme = savedTheme ||
+        (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    } catch (_error) {
+      document.documentElement.dataset.theme = "light";
+    }
+  })();
+</script>
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header>
-  <h1>Fuel Compare</h1>
-  <p class="subtitle">Compare annual fuel costs across vehicles, using free EPA fuel-economy data.</p>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand-mark" aria-hidden="true"><span>FC</span></div>
+    <div class="brand-copy">
+      <p class="eyebrow">Drive smarter</p>
+      <h1>Fuel <span>Compare</span></h1>
+      <p class="subtitle">Real-world fuel costs, side by side.</p>
+    </div>
+    <div class="header-actions">
+      <div class="header-status">
+        <span class="status-dot"></span>
+        EPA vehicle data
+      </div>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
+        <span class="theme-icon" aria-hidden="true"></span>
+        <span class="theme-label">Dark</span>
+      </button>
+    </div>
+  </div>
 </header>
 
-<main>
+<main class="app-shell">
   <section class="panel" id="settings-panel">
-    <h2>Driving &amp; Fuel Settings</h2>
-    <div class="settings-grid">
-      <div class="field">
-        <label for="distance-value">Distance driven</label>
-        <div class="inline-group">
-          <input type="number" id="distance-value" min="0" step="1" value="2000">
-          <select id="distance-period">
-            <option value="month" selected>per month</option>
-            <option value="year">per year</option>
-          </select>
-          <select id="distance-unit">
-            <option value="km" selected>km</option>
-            <option value="mi">miles</option>
-          </select>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Set the baseline</p>
+        <h2>Driving &amp; fuel</h2>
+      </div>
+    </div>
+    <div class="settings-layout">
+      <div class="setting-block trip-block">
+        <div class="block-heading">
+          <h3>Trip profile</h3>
+          <span>Your typical driving</span>
+        </div>
+        <div class="field">
+          <label for="distance-value">Distance driven</label>
+          <div class="inline-group distance-group">
+            <input type="number" id="distance-value" min="0" step="1" value="2000">
+            <select id="distance-period">
+              <option value="month" selected>per month</option>
+              <option value="year">per year</option>
+            </select>
+            <select id="distance-unit">
+              <option value="km" selected>km</option>
+              <option value="mi">miles</option>
+            </select>
+          </div>
+        </div>
+        <div class="field split-field">
+          <label for="city-highway-slider">City / highway split</label>
+          <div class="slider-group">
+            <span id="city-weight-label" class="slider-value">50% city</span>
+            <input type="range" id="city-highway-slider" min="0" max="100" step="1" value="50">
+            <span id="highway-weight-label" class="slider-value">50% highway</span>
+          </div>
         </div>
       </div>
 
-      <div class="field split-field">
-        <label for="city-highway-slider">City / highway split</label>
-        <div class="slider-group">
-          <span id="city-weight-label" class="slider-value">50% city</span>
-          <input type="range" id="city-highway-slider" min="0" max="100" step="1" value="50">
-          <span id="highway-weight-label" class="slider-value">50% highway</span>
+      <div class="setting-block fuel-block">
+        <div class="block-heading">
+          <h3>Fuel market</h3>
+          <span>Lookup or enter prices</span>
         </div>
-      </div>
-
-      <div class="field">
-        <label>Fuel price unit</label>
-        <div class="inline-group">
-          <select id="price-unit">
-            <option value="liter" selected>per liter</option>
-            <option value="gallon">per gallon</option>
-          </select>
+        <div class="fuel-toolbar">
+          <div class="field price-location-field">
+            <label for="fuel-price-location">Canadian location</label>
+            <select id="fuel-price-location" disabled>
+              <option value="">Loading locations…</option>
+            </select>
+          </div>
+          <div class="field price-unit-field">
+            <label for="price-unit">Price unit</label>
+            <select id="price-unit">
+              <option value="liter" selected>per litre</option>
+              <option value="gallon">per gallon</option>
+            </select>
+          </div>
+          <button type="button" id="load-fuel-prices" class="btn-secondary lookup-button" disabled>Use latest</button>
         </div>
-      </div>
-
-      <div class="field price-location-field">
-        <label for="fuel-price-location">Canadian fuel-price location</label>
-        <div class="inline-group">
-          <select id="fuel-price-location" disabled>
-            <option value="">Loading locations…</option>
-          </select>
-          <button type="button" id="load-fuel-prices" class="btn-secondary" disabled>Use latest average</button>
-          <a class="manual-price-link" href="https://natural-resources.canada.ca/domestic-international-markets/transportation-fuel-prices" target="_blank" rel="noopener">Check current prices</a>
+        <div class="price-meta">
+          <small id="fuel-price-note" class="lookup-note" aria-live="polite">Select a Statistics Canada location or enter prices.</small>
+          <a class="manual-price-link" href="https://natural-resources.canada.ca/domestic-international-markets/transportation-fuel-prices" target="_blank" rel="noopener">Current prices ↗</a>
         </div>
-        <small id="fuel-price-note" class="lookup-note" aria-live="polite">Select a Statistics Canada location, or enter prices manually below.</small>
-      </div>
-
-      <div class="field prices">
-        <label>Fuel prices</label>
-        <div class="inline-group prices-grid">
-          <label class="price-label">Regular <input type="number" id="price-regular" min="0" step="0.001" value="2.07"></label>
-          <label class="price-label">Midgrade <input type="number" id="price-midgrade" min="0" step="0.001" value="1.54"></label>
-          <label class="price-label">Premium <input type="number" id="price-premium" min="0" step="0.001" value="2.28"></label>
-          <label class="price-label">Diesel <input type="number" id="price-diesel" min="0" step="0.001" value="2.27"></label>
+        <div class="prices-grid">
+          <label class="price-label"><span>Regular</span><input type="number" id="price-regular" min="0" step="0.001" value="2.07"></label>
+          <label class="price-label"><span>Midgrade</span><input type="number" id="price-midgrade" min="0" step="0.001" value="1.54"></label>
+          <label class="price-label"><span>Premium</span><input type="number" id="price-premium" min="0" step="0.001" value="2.28"></label>
+          <label class="price-label"><span>Diesel</span><input type="number" id="price-diesel" min="0" step="0.001" value="2.27"></label>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="panel">
+  <section class="panel vehicles-panel">
     <div class="panel-header">
-      <h2>Vehicles</h2>
-      <button type="button" id="add-vehicle" class="btn-secondary">+ Add vehicle</button>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Build the lineup</p>
+          <h2>Vehicles</h2>
+        </div>
+      </div>
+      <button type="button" id="add-vehicle" class="btn-secondary">＋ Add vehicle</button>
     </div>
     <div id="vehicles"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel comparison-panel">
     <div class="panel-header">
-      <h2>Comparison</h2>
-      <button type="button" id="run-compare" class="btn-primary">Compare</button>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">See the difference</p>
+          <h2>Comparison</h2>
+        </div>
+      </div>
+      <button type="button" id="run-compare" class="btn-primary">Compare costs <span>→</span></button>
     </div>
     <div id="error-box" class="error-box" hidden></div>
-    <div id="results"></div>
+    <div id="results">
+      <div class="results-empty">
+        <span class="results-empty-mark">$</span>
+        <div><strong>Ready when you are</strong><small>Add vehicle details, then compare annual fuel costs.</small></div>
+      </div>
+    </div>
   </section>
 </main>
 
+<footer class="site-footer">
+  <span>Fuel Compare</span>
+  <span>EPA efficiency · Statistics Canada prices · Local vehicle cache</span>
+</footer>
+
 <template id="vehicle-card-template">
-  <div class="vehicle-card" data-index="">
+  <article class="vehicle-card" data-index="">
     <div class="vehicle-card-header">
-      <div class="v-label"></div>
-      <button type="button" class="btn-remove" title="Remove vehicle">&times;</button>
+      <div>
+        <span class="vehicle-kicker">Vehicle</span>
+        <div class="v-label"></div>
+      </div>
+      <button type="button" class="btn-remove" title="Remove vehicle" aria-label="Remove vehicle">&times;</button>
     </div>
     <div class="field saved-vehicle-field">
       <label>Saved vehicle</label>
@@ -104,7 +166,8 @@
         <option value="">Loading saved vehicles…</option>
       </select>
     </div>
-    <div class="vehicle-grid">
+    <div class="vehicle-section-label"><span>Find a vehicle</span></div>
+    <div class="vehicle-grid identity-grid">
       <div class="field">
         <label>Year</label>
         <select class="v-year"><option value="">Select year</option></select>
@@ -122,13 +185,14 @@
         <select class="v-trim" disabled><option value="">Select trim</option></select>
       </div>
     </div>
+    <div class="vehicle-section-label"><span>Efficiency &amp; capacity</span></div>
     <div class="vehicle-grid vehicle-details">
       <div class="field">
-        <label>City (L/100km)</label>
+        <label>City <span>L/100km</span></label>
         <input type="number" class="v-city" min="0" step="0.1">
       </div>
       <div class="field">
-        <label>Highway (L/100km)</label>
+        <label>Highway <span>L/100km</span></label>
         <input type="number" class="v-highway" min="0" step="0.1">
       </div>
       <div class="field">
@@ -142,7 +206,7 @@
       </div>
       <div class="field">
         <label>Tank size</label>
-        <div class="inline-group">
+        <div class="inline-group tank-group">
           <input type="number" class="v-tank" min="0" step="0.1" placeholder="e.g. 60">
           <datalist class="v-tank-options"></datalist>
           <select class="v-tank-unit">
@@ -154,7 +218,7 @@
       </div>
     </div>
     <p class="v-note" hidden></p>
-  </div>
+  </article>
 </template>
 
 <script src="/static/app.js"></script>

@@ -324,7 +324,10 @@
         note.textContent = "This saved vehicle's fuel type isn't supported. Select a fuel type manually.";
       }
       if (vehicle.tank_size) {
-        setTankHint("Loaded from the local vehicle cache. You can edit any value before comparing.");
+        setTankHint(
+          "Loaded from the local vehicle cache. You can edit any value before comparing.",
+          fuelTankCapVehicleUrl(vehicle.make, vehicle.base_model || vehicle.model, vehicle.year)
+        );
       } else {
         setTankHint(
           "Loaded vehicle data from the local cache. Enter the tank size manually.",
@@ -429,7 +432,10 @@
         if (v.tank_size) {
           tankInput.value = v.tank_size;
           tankUnitSel.value = v.tank_unit || "liter";
-          setTankHint("Loaded tank size from the local vehicle cache. You can edit it if needed.");
+          setTankHint(
+            "Loaded tank size from the local vehicle cache. You can edit it if needed.",
+            manualTankLookupUrl
+          );
           return;
         }
 
@@ -460,7 +466,8 @@
                 ? "Loaded tank size from the local vehicle cache. You can edit it if needed."
                 : tank.matched_trim
                 ? `Estimated from ${tank.matched_trim} via CarAPI — verify against your owner's manual.`
-                : "Estimated via CarAPI — verify against your owner's manual."
+                : "Estimated via CarAPI — verify against your owner's manual.",
+              manualTankLookupUrl
             );
           } else if (tank && tank.matches && tank.matches.length) {
             setTankHint(

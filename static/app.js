@@ -7,6 +7,7 @@
   const resultsEl = document.getElementById("results");
   let vehicleSeq = 0;
   let yearsCache = null;
+  let savedVehiclesCache = null;
 
   async function fetchJSON(url, options) {
     const resp = await fetch(url, options);
@@ -186,6 +187,30 @@
     fillSelect(select, yearsCache, "Select year");
   }
 
+  function populateSavedSelect(select, selectedValue = "") {
+    const options = (savedVehiclesCache || []).map((vehicle) => ({
+      value: String(vehicle.record_id),
+      text: vehicle.label,
+    }));
+    fillSelect(select, options, options.length ? "Load a saved vehicle" : "No saved vehicles yet");
+    select.disabled = options.length === 0;
+    select.value = selectedValue;
+  }
+
+  async function ensureSavedVehicles(select) {
+    if (!savedVehiclesCache) {
+      savedVehiclesCache = await fetchJSON("/api/saved-vehicles");
+    }
+    populateSavedSelect(select);
+  }
+
+  async function refreshSavedVehicles() {
+    savedVehiclesCache = await fetchJSON("/api/saved-vehicles");
+    for (const select of document.querySelectorAll(".v-saved")) {
+      populateSavedSelect(select, select.value);
+    }
+  }
+
   function addVehicleCard(defaultLabel) {
     const index = vehicleSeq++;
     const frag = template.content.cloneNode(true);
@@ -194,7 +219,9 @@
 
     const labelEl = card.querySelector(".v-label");
     const placeholderLabel = defaultLabel || `Vehicle ${index + 1}`;
+    let fallbackLabel = placeholderLabel;
 
+    const savedSel = card.querySelector(".v-saved");
     const yearSel = card.querySelector(".v-year");
     const makeSel = card.querySelector(".v-make");
     const modelSel = card.querySelector(".v-model");
@@ -246,15 +273,81 @@
       if (year && make && model) {
         labelEl.textContent = trim ? `${year} ${make} ${model} — ${trim}` : `${year} ${make} ${model}`;
       } else {
-        labelEl.textContent = placeholderLabel;
+        labelEl.textContent = fallbackLabel;
       }
     }
     updateLabel();
 
     ensureYears(yearSel).catch((err) => showError(err.message));
+    ensureSavedVehicles(savedSel).catch(() => {
+      resetSelect(savedSel, "Saved vehicle cache unavailable");
+    });
+
+    function clearSavedIdentity() {
+      savedSel.value = "";
+      fallbackLabel = placeholderLabel;
+      for (const field of ["recordId", "epaVehicleId", "year", "make", "model", "trim"]) {
+        delete card.dataset[field];
+      }
+    }
+
+    function rememberIdentity(vehicle, trim = "") {
+      if (vehicle.record_id) card.dataset.recordId = String(vehicle.record_id);
+      if (vehicle.epa_vehicle_id || vehicle.id) {
+        card.dataset.epaVehicleId = String(vehicle.epa_vehicle_id || vehicle.id);
+      }
+      for (const field of ["year", "make", "model"]) {
+        if (vehicle[field]) card.dataset[field] = String(vehicle[field]);
+      }
+      if (trim || vehicle.trim) card.dataset.trim = trim || vehicle.trim;
+    }
+
+    function applySavedVehicle(vehicle) {
+      clearTankLookup();
+      yearSel.value = "";
+      resetSelect(makeSel, "Select make");
+      resetSelect(modelSel, "Select model");
+      resetSelect(trimSel, "Select trim");
+      rememberIdentity(vehicle);
+      fallbackLabel = vehicle.label || placeholderLabel;
+      labelEl.textContent = fallbackLabel;
+      cityInput.value = vehicle.city_l_100km || "";
+      highwayInput.value = vehicle.highway_l_100km || "";
+      if (vehicle.fuel_type && vehicle.fuel_type !== "unsupported") {
+        fuelSel.value = vehicle.fuel_type;
+      }
+      tankInput.value = vehicle.tank_size || "";
+      tankUnitSel.value = vehicle.tank_unit || "liter";
+      note.hidden = true;
+      if (vehicle.fuel_type === "unsupported") {
+        note.hidden = false;
+        note.textContent = "This saved vehicle's fuel type isn't supported. Select a fuel type manually.";
+      }
+      if (vehicle.tank_size) {
+        setTankHint("Loaded from the local vehicle cache. You can edit any value before comparing.");
+      } else {
+        setTankHint(
+          "Loaded vehicle data from the local cache. Enter the tank size manually.",
+          fuelTankCapVehicleUrl(vehicle.make, vehicle.base_model || vehicle.model, vehicle.year)
+        );
+      }
+    }
+
+    savedSel.addEventListener("change", async () => {
+      if (!savedSel.value) return;
+      const loadSeq = ++vehicleLoadSeq;
+      try {
+        const vehicle = await fetchJSON(`/api/saved-vehicle/${encodeURIComponent(savedSel.value)}`);
+        if (loadSeq !== vehicleLoadSeq) return;
+        applySavedVehicle(vehicle);
+      } catch (err) {
+        showError(err.message);
+      }
+    });
 
     yearSel.addEventListener("change", async () => {
       vehicleLoadSeq += 1;
+      clearSavedIdentity();
       resetSelect(makeSel, "Select make");
       resetSelect(modelSel, "Select model");
       resetSelect(trimSel, "Select trim");
@@ -272,6 +365,7 @@
 
     makeSel.addEventListener("change", async () => {
       vehicleLoadSeq += 1;
+      clearSavedIdentity();
       resetSelect(modelSel, "Select model");
       resetSelect(trimSel, "Select trim");
       note.hidden = true;
@@ -290,6 +384,7 @@
 
     modelSel.addEventListener("change", async () => {
       vehicleLoadSeq += 1;
+      clearSavedIdentity();
       resetSelect(trimSel, "Select trim");
       note.hidden = true;
       clearTankLookup();
@@ -307,6 +402,7 @@
 
     trimSel.addEventListener("change", async () => {
       const loadSeq = ++vehicleLoadSeq;
+      clearSavedIdentity();
       note.hidden = true;
       clearTankLookup();
       updateLabel();
@@ -314,6 +410,7 @@
       try {
         const v = await fetchJSON(`/api/vehicle/${encodeURIComponent(trimSel.value)}`);
         if (loadSeq !== vehicleLoadSeq) return;
+        rememberIdentity(v, selectedText(trimSel));
         const manualTankLookupUrl = fuelTankCapVehicleUrl(
           v.make,
           v.base_model || v.model,
@@ -329,6 +426,13 @@
           note.textContent = `This vehicle's fuel type (${v.fuel_type_label || "unknown"}) isn't supported for cost comparison. Pick a gasoline or diesel trim, or set the fields manually.`;
         }
 
+        if (v.tank_size) {
+          tankInput.value = v.tank_size;
+          tankUnitSel.value = v.tank_unit || "liter";
+          setTankHint("Loaded tank size from the local vehicle cache. You can edit it if needed.");
+          return;
+        }
+
         // Tank capacity isn't in the EPA data, so match its vehicle record to
         // CarAPI. Keep all candidate sizes available as datalist suggestions.
         setTankHint("Looking up tank size…");
@@ -338,6 +442,7 @@
             cylinders: v.cylinders || "", displ: v.displ || "",
             city_mpg: v.city_mpg || "", highway_mpg: v.highway_mpg || "",
             transmission: v.trany || "", base_model: v.base_model || "",
+            vehicle_id: v.epa_vehicle_id || v.id || trimSel.value,
           });
           const tank = await fetchJSON(`/api/tank-size?${params}`);
           if (loadSeq !== vehicleLoadSeq) return;
@@ -351,7 +456,9 @@
             tankInput.value = tank.capacity_l;
             tankUnitSel.value = "liter";
             setTankHint(
-              tank.matched_trim
+              tank.cached
+                ? "Loaded tank size from the local vehicle cache. You can edit it if needed."
+                : tank.matched_trim
                 ? `Estimated from ${tank.matched_trim} via CarAPI — verify against your owner's manual.`
                 : "Estimated via CarAPI — verify against your owner's manual."
             );
@@ -408,6 +515,16 @@
 
     const vehicles = Array.from(document.querySelectorAll(".vehicle-card")).map((card) => ({
       label: card.querySelector(".v-label").textContent,
+      record_id: card.dataset.recordId || "",
+      epa_vehicle_id: card.dataset.epaVehicleId || "",
+      year: card.dataset.year || card.querySelector(".v-year").value,
+      make: card.dataset.make || card.querySelector(".v-make").value,
+      model: card.dataset.model || card.querySelector(".v-model").value,
+      trim: card.dataset.trim || (
+        card.querySelector(".v-trim").value
+          ? card.querySelector(".v-trim").options[card.querySelector(".v-trim").selectedIndex].text
+          : ""
+      ),
       city_l_100km: parseFloat(card.querySelector(".v-city").value),
       highway_l_100km: parseFloat(card.querySelector(".v-highway").value),
       fuel_type: card.querySelector(".v-fuel").value,
@@ -465,6 +582,7 @@
         body: JSON.stringify(payload),
       });
       renderResults(data);
+      refreshSavedVehicles().catch(() => {});
     } catch (err) {
       showError(err.message);
     }

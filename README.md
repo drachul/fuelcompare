@@ -32,6 +32,11 @@ Statistics Canada does not publish midgrade in this table, so that value is
 left untouched. All price fields remain editable, and the UI links to Natural
 Resources Canada's current fuel-price page as a manual lookup fallback.
 
+Vehicle details are stored in a local SQLite cache after an EPA lookup or a
+successful comparison. That includes tank-size lookup results and manual
+changes. Saved vehicles can be loaded into any comparison card without calling
+the external vehicle APIs again.
+
 ## Run with Docker Compose
 
 ```bash
@@ -40,11 +45,18 @@ docker compose up --build
 
 Then open http://localhost:8080. Stop with `docker compose down`.
 
+The Compose configuration keeps the SQLite database at
+`./data/fuelcompare.db`, so saved vehicles survive container recreation and
+the database remains directly accessible from the project directory.
+
 ## Run with Docker (no Compose)
 
 ```bash
 docker build -t fuelcompare .
-docker run --rm -p 8080:8080 fuelcompare
+mkdir -p data
+docker run --rm -p 8080:8080 \
+  -e FUELCOMPARE_DB_PATH=/app/data/fuelcompare.db \
+  -v "$(pwd)/data:/app/data" fuelcompare
 ```
 
 Then open http://localhost:8080
@@ -63,7 +75,9 @@ python app.py
   plug-in/CNG/hydrogen/flex-fuel trims are flagged as unsupported when picked
   from the EPA dropdowns — you can still fill in the fields manually.
 - EPA API responses are cached in memory for 24 hours to keep the dropdowns
-  fast and avoid hammering fueleconomy.gov.
+  fast and avoid hammering fueleconomy.gov. Selected vehicle records are also
+  cached persistently in SQLite. Set `FUELCOMPARE_DB_PATH` to choose a different
+  database location; locally it defaults to `data/fuelcompare.db`.
 - Statistics Canada data are also cached in memory for 24 hours. If that
   service cannot be reached, fuel prices can still be entered manually.
 - Tank-size matches are estimates because the EPA and CarAPI trim identifiers

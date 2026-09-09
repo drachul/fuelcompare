@@ -6,4 +6,7 @@ services:
     environment:
       - CARAPI_API_TOKEN
       - CARAPI_API_SECRET
+      - FUELCOMPARE_DB_PATH=/app/data/fuelcompare.db
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped

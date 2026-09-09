@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -6,7 +8,12 @@ from server import create_app
 
 class TankSizeRouteTests(unittest.TestCase):
     def setUp(self):
-        self.client = create_app().test_client()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.client = create_app({
+            "TESTING": True,
+            "VEHICLE_DB_PATH": os.path.join(self.temp_dir.name, "vehicles.db"),
+        }).test_client()
 
     def test_requires_vehicle_identity(self):
         response = self.client.get("/api/tank-size?year=2018")
@@ -33,7 +40,12 @@ class TankSizeRouteTests(unittest.TestCase):
 
 class FuelPriceRouteTests(unittest.TestCase):
     def setUp(self):
-        self.client = create_app().test_client()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.client = create_app({
+            "TESTING": True,
+            "VEHICLE_DB_PATH": os.path.join(self.temp_dir.name, "vehicles.db"),
+        }).test_client()
 
     @patch("server.routes.statcan_client.get_locations")
     def test_lists_statcan_locations(self, get_locations):

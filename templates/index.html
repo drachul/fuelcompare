@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuel Compare</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>Fuel Compare</h1>
+  <p class="subtitle">Compare annual fuel costs across vehicles, using free EPA fuel-economy data.</p>
+</header>
+
+<main>
+  <section class="panel" id="settings-panel">
+    <h2>Driving &amp; Fuel Settings</h2>
+    <div class="settings-grid">
+      <div class="field">
+        <label for="distance-value">Distance driven</label>
+        <div class="inline-group">
+          <input type="number" id="distance-value" min="0" step="1" value="2000">
+          <select id="distance-period">
+            <option value="month" selected>per month</option>
+            <option value="year">per year</option>
+          </select>
+          <select id="distance-unit">
+            <option value="km" selected>km</option>
+            <option value="mi">miles</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>City / highway split</label>
+        <div class="inline-group">
+          <input type="number" id="city-weight" min="0" max="100" step="1" value="50">
+          <span>% city</span>
+          <input type="number" id="highway-weight" min="0" max="100" step="1" value="50">
+          <span>% highway</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Fuel price unit</label>
+        <div class="inline-group">
+          <select id="price-unit">
+            <option value="liter" selected>per liter</option>
+            <option value="gallon">per gallon</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field prices">
+        <label>Fuel prices</label>
+        <div class="inline-group prices-grid">
+          <label class="price-label">Regular <input type="number" id="price-regular" min="0" step="0.01" value="2.07"></label>
+          <label class="price-label">Midgrade <input type="number" id="price-midgrade" min="0" step="0.01" value="1.54"></label>
+          <label class="price-label">Premium <input type="number" id="price-premium" min="0" step="0.01" value="2.28"></label>
+          <label class="price-label">Diesel <input type="number" id="price-diesel" min="0" step="0.01" value="2.27"></label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Vehicles</h2>
+      <button type="button" id="add-vehicle" class="btn-secondary">+ Add vehicle</button>
+    </div>
+    <div id="vehicles"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Comparison</h2>
+      <button type="button" id="run-compare" class="btn-primary">Compare</button>
+    </div>
+    <div id="error-box" class="error-box" hidden></div>
+    <div id="results"></div>
+  </section>
+</main>
+
+<template id="vehicle-card-template">
+  <div class="vehicle-card" data-index="">
+    <div class="vehicle-card-header">
+      <input type="text" class="v-label" placeholder="Label (e.g. Vehicle A)">
+      <button type="button" class="btn-remove" title="Remove vehicle">&times;</button>
+    </div>
+    <div class="vehicle-grid">
+      <div class="field">
+        <label>Year</label>
+        <select class="v-year"><option value="">Select year</option></select>
+      </div>
+      <div class="field">
+        <label>Make</label>
+        <select class="v-make" disabled><option value="">Select make</option></select>
+      </div>
+      <div class="field">
+        <label>Model</label>
+        <select class="v-model" disabled><option value="">Select model</option></select>
+      </div>
+      <div class="field">
+        <label>Trim / engine</label>
+        <select class="v-trim" disabled><option value="">Select trim</option></select>
+      </div>
+    </div>
+    <div class="vehicle-grid vehicle-details">
+      <div class="field">
+        <label>City (L/100km)</label>
+        <input type="number" class="v-city" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label>Highway (L/100km)</label>
+        <input type="number" class="v-highway" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label>Fuel type</label>
+        <select class="v-fuel">
+          <option value="regular">Regular gasoline</option>
+          <option value="midgrade">Midgrade gasoline</option>
+          <option value="premium">Premium gasoline</option>
+          <option value="diesel">Diesel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tank size</label>
+        <div class="inline-group">
+          <input type="number" class="v-tank" min="0" step="1" placeholder="e.g. 60">
+          <select class="v-tank-unit">
+            <option value="liter" selected>L</option>
+            <option value="gallon">gal</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <p class="v-note" hidden></p>
+  </div>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

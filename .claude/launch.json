@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fuelcompare-docker",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["run", "--rm", "-p", "8080:8080", "--name", "fuelcompare-preview", "fuelcompare"],
+      "port": 8080
+    }
+  ]
+}

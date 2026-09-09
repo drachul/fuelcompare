@@ -28,6 +28,99 @@
     errorBox.textContent = message;
   }
 
+  const priceLocation = document.getElementById("fuel-price-location");
+  const loadFuelPricesButton = document.getElementById("load-fuel-prices");
+  const fuelPriceNote = document.getElementById("fuel-price-note");
+  const priceInputs = {
+    regular: document.getElementById("price-regular"),
+    midgrade: document.getElementById("price-midgrade"),
+    premium: document.getElementById("price-premium"),
+    diesel: document.getElementById("price-diesel"),
+  };
+
+  function setFuelPriceNote(message, sourceUrl) {
+    fuelPriceNote.replaceChildren(document.createTextNode(message));
+    if (sourceUrl) {
+      const sourceLink = document.createElement("a");
+      sourceLink.href = sourceUrl;
+      sourceLink.target = "_blank";
+      sourceLink.rel = "noopener";
+      sourceLink.textContent = " View source.";
+      fuelPriceNote.appendChild(sourceLink);
+    }
+  }
+
+  function formatPeriod(period) {
+    const [year, month] = period.split("-").map(Number);
+    if (!year || !month) return period;
+    return new Intl.DateTimeFormat(undefined, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    })
+      .format(new Date(Date.UTC(year, month - 1, 1)));
+  }
+
+  async function loadFuelPriceLocations() {
+    try {
+      const locations = await fetchJSON("/api/fuel-price-locations");
+      fillSelect(priceLocation, locations, "Select Canada or a city");
+      let savedLocation = "";
+      try {
+        savedLocation = localStorage.getItem("fuelPriceLocation") || "";
+      } catch (_storageErr) {
+        // Storage can be disabled; the lookup itself should still work.
+      }
+      if (savedLocation && locations.includes(savedLocation)) {
+        priceLocation.value = savedLocation;
+        loadFuelPricesButton.disabled = false;
+      }
+    } catch (_err) {
+      resetSelect(priceLocation, "Location lookup unavailable");
+      setFuelPriceNote("Statistics Canada lookup is unavailable. Enter prices manually or use the current-price link.");
+    }
+  }
+
+  priceLocation.addEventListener("change", () => {
+    loadFuelPricesButton.disabled = !priceLocation.value;
+    if (priceLocation.value) {
+      try {
+        localStorage.setItem("fuelPriceLocation", priceLocation.value);
+      } catch (_storageErr) {
+        // Remembering the selection is optional.
+      }
+      setFuelPriceNote("Use the latest monthly average, or enter prices manually below.");
+    }
+  });
+
+  loadFuelPricesButton.addEventListener("click", async () => {
+    if (!priceLocation.value) return;
+    loadFuelPricesButton.disabled = true;
+    setFuelPriceNote("Loading the latest Statistics Canada averages…");
+    try {
+      const data = await fetchJSON(
+        `/api/fuel-prices?location=${encodeURIComponent(priceLocation.value)}`
+      );
+      document.getElementById("price-unit").value = data.price_unit;
+      for (const fuel of ["regular", "premium", "diesel"]) {
+        if (Number.isFinite(data.prices[fuel])) {
+          priceInputs[fuel].value = data.prices[fuel].toFixed(3);
+        }
+      }
+      setFuelPriceNote(
+        `${data.location}: ${formatPeriod(data.period)} average in CAD/L. ` +
+        "Regular, premium, and diesel were updated; midgrade is not published and was left unchanged.",
+        data.source_url
+      );
+    } catch (err) {
+      setFuelPriceNote(`${err.message} Enter prices manually or use the current-price link.`);
+    } finally {
+      loadFuelPricesButton.disabled = !priceLocation.value;
+    }
+  });
+
+  loadFuelPriceLocations();
+
   const splitSlider = document.getElementById("city-highway-slider");
   const cityWeightLabel = document.getElementById("city-weight-label");
   const highwayWeightLabel = document.getElementById("highway-weight-label");

@@ -50,13 +50,25 @@
         </div>
       </div>
 
+      <div class="field price-location-field">
+        <label for="fuel-price-location">Canadian fuel-price location</label>
+        <div class="inline-group">
+          <select id="fuel-price-location" disabled>
+            <option value="">Loading locations…</option>
+          </select>
+          <button type="button" id="load-fuel-prices" class="btn-secondary" disabled>Use latest average</button>
+          <a class="manual-price-link" href="https://natural-resources.canada.ca/domestic-international-markets/transportation-fuel-prices" target="_blank" rel="noopener">Check current prices</a>
+        </div>
+        <small id="fuel-price-note" class="lookup-note" aria-live="polite">Select a Statistics Canada location, or enter prices manually below.</small>
+      </div>
+
       <div class="field prices">
         <label>Fuel prices</label>
         <div class="inline-group prices-grid">
-          <label class="price-label">Regular <input type="number" id="price-regular" min="0" step="0.01" value="2.07"></label>
-          <label class="price-label">Midgrade <input type="number" id="price-midgrade" min="0" step="0.01" value="1.54"></label>
-          <label class="price-label">Premium <input type="number" id="price-premium" min="0" step="0.01" value="2.28"></label>
-          <label class="price-label">Diesel <input type="number" id="price-diesel" min="0" step="0.01" value="2.27"></label>
+          <label class="price-label">Regular <input type="number" id="price-regular" min="0" step="0.001" value="2.07"></label>
+          <label class="price-label">Midgrade <input type="number" id="price-midgrade" min="0" step="0.001" value="1.54"></label>
+          <label class="price-label">Premium <input type="number" id="price-premium" min="0" step="0.001" value="2.28"></label>
+          <label class="price-label">Diesel <input type="number" id="price-diesel" min="0" step="0.001" value="2.27"></label>
         </div>
       </div>
     </div>

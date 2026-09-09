@@ -31,5 +31,41 @@ class TankSizeRouteTests(unittest.TestCase):
         )
 
 
+class FuelPriceRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.client = create_app().test_client()
+
+    @patch("server.routes.statcan_client.get_locations")
+    def test_lists_statcan_locations(self, get_locations):
+        get_locations.return_value = ["Canada", "Vancouver, British Columbia"]
+
+        response = self.client.get("/api/fuel-price-locations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()[0], "Canada")
+
+    def test_fuel_prices_requires_location(self):
+        response = self.client.get("/api/fuel-prices")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "location is required")
+
+    @patch("server.routes.statcan_client.get_latest_prices")
+    def test_returns_latest_prices(self, get_latest_prices):
+        get_latest_prices.return_value = {
+            "location": "Vancouver, British Columbia",
+            "period": "2026-07",
+            "prices": {"regular": 2.007, "midgrade": None, "premium": 2.267, "diesel": 2.354},
+        }
+
+        response = self.client.get(
+            "/api/fuel-prices?location=Vancouver%2C%20British%20Columbia"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["prices"]["regular"], 2.007)
+        get_latest_prices.assert_called_once_with("Vancouver, British Columbia")
+
+
 if __name__ == "__main__":
     unittest.main()

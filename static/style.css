@@ -90,6 +90,8 @@ main {
 #highway-weight-label { text-align: right; }
 
 .prices-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+.price-location-field { grid-column: 1 / -1; }
+.price-location-field select { min-width: min(100%, 330px); }
 .price-label {
   display: flex;
   flex-direction: column;
@@ -110,6 +112,18 @@ input, select {
 input:disabled, select:disabled { background: #f1f2f4; color: var(--muted); }
 input[type="number"] { width: 100px; }
 .price-label input { width: 90px; }
+
+.lookup-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.manual-price-link {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.manual-price-link:hover { text-decoration: underline; }
 
 .btn-primary, .btn-secondary, .btn-remove {
   cursor: pointer;

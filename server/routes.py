@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from . import carapi_client, epa_client
+from . import carapi_client, epa_client, statcan_client
 from .calc import CalcError, compute_comparison
 
 bp = Blueprint("api", __name__)
@@ -60,6 +60,27 @@ def vehicle(vehicle_id):
     try:
         return jsonify(epa_client.get_vehicle(vehicle_id))
     except epa_client.EpaApiError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.get("/fuel-price-locations")
+def fuel_price_locations():
+    try:
+        return jsonify(statcan_client.get_locations())
+    except statcan_client.StatsCanApiError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@bp.get("/fuel-prices")
+def fuel_prices():
+    location = request.args.get("location", "").strip()
+    if not location:
+        return jsonify({"error": "location is required"}), 400
+    try:
+        return jsonify(statcan_client.get_latest_prices(location))
+    except statcan_client.UnknownLocationError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except statcan_client.StatsCanApiError as exc:
         return jsonify({"error": str(exc)}), 502
 
 

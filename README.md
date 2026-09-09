@@ -25,6 +25,13 @@ full subscribed dataset, set `CARAPI_API_TOKEN` and `CARAPI_API_SECRET` in the
 app environment. The app obtains and caches the short-lived JWT automatically;
 credentials and tokens are never sent to the browser.
 
+Fuel-price fields can be primed from the latest monthly city averages in
+Statistics Canada [table 18-10-0001-01](https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000101).
+The app loads regular, premium, and diesel self-service prices in CAD/litre.
+Statistics Canada does not publish midgrade in this table, so that value is
+left untouched. All price fields remain editable, and the UI links to Natural
+Resources Canada's current fuel-price page as a manual lookup fallback.
+
 ## Run with Docker Compose
 
 ```bash
@@ -57,6 +64,8 @@ python app.py
   from the EPA dropdowns — you can still fill in the fields manually.
 - EPA API responses are cached in memory for 24 hours to keep the dropdowns
   fast and avoid hammering fueleconomy.gov.
+- Statistics Canada data are also cached in memory for 24 hours. If that
+  service cannot be reached, fuel prices can still be entered manually.
 - Tank-size matches are estimates because the EPA and CarAPI trim identifiers
   are not directly compatible. Verify a suggested size against the vehicle's
   owner's manual.

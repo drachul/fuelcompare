@@ -31,13 +31,12 @@
         </div>
       </div>
 
-      <div class="field">
-        <label>City / highway split</label>
-        <div class="inline-group">
-          <input type="number" id="city-weight" min="0" max="100" step="1" value="50">
-          <span>% city</span>
-          <input type="number" id="highway-weight" min="0" max="100" step="1" value="50">
-          <span>% highway</span>
+      <div class="field split-field">
+        <label for="city-highway-slider">City / highway split</label>
+        <div class="slider-group">
+          <span id="city-weight-label" class="slider-value">50% city</span>
+          <input type="range" id="city-highway-slider" min="0" max="100" step="1" value="50">
+          <span id="highway-weight-label" class="slider-value">50% highway</span>
         </div>
       </div>
 
@@ -84,7 +83,7 @@
 <template id="vehicle-card-template">
   <div class="vehicle-card" data-index="">
     <div class="vehicle-card-header">
-      <input type="text" class="v-label" placeholder="Label (e.g. Vehicle A)">
+      <div class="v-label"></div>
       <button type="button" class="btn-remove" title="Remove vehicle">&times;</button>
     </div>
     <div class="vehicle-grid">
@@ -126,12 +125,14 @@
       <div class="field">
         <label>Tank size</label>
         <div class="inline-group">
-          <input type="number" class="v-tank" min="0" step="1" placeholder="e.g. 60">
+          <input type="number" class="v-tank" min="0" step="0.1" placeholder="e.g. 60">
+          <datalist class="v-tank-options"></datalist>
           <select class="v-tank-unit">
             <option value="liter" selected>L</option>
             <option value="gallon">gal</option>
           </select>
         </div>
+        <small class="v-tank-hint" hidden></small>
       </div>
     </div>
     <p class="v-note" hidden></p>

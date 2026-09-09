@@ -14,8 +14,16 @@ annual fuel cost = fill-ups per year * cost per tank
 
 Vehicle city/highway consumption and fuel type are looked up for free from the
 US DOE/EPA [fueleconomy.gov](https://www.fueleconomy.gov/feg/ws/index.shtml)
-public API (no API key required, covers model years back to 1984). Tank size
-isn't published by that API, so it's entered manually per vehicle.
+public API (no API key required, covers model years back to 1984). That API has
+no tank-capacity field, so the app also does a best-effort lookup against
+[CarAPI](https://carapi.app/). It ranks same-year/make/model records using
+engine, transmission, and EPA MPG data. A clear match is pre-filled; ambiguous
+matches are offered as suggestions, and the field always remains editable.
+
+CarAPI's unauthenticated demo data covers model years 2015-2020. To enable its
+full subscribed dataset, set `CARAPI_API_TOKEN` and `CARAPI_API_SECRET` in the
+app environment. The app obtains and caches the short-lived JWT automatically;
+credentials and tokens are never sent to the browser.
 
 ## Run with Docker Compose
 
@@ -49,3 +57,6 @@ python app.py
   from the EPA dropdowns — you can still fill in the fields manually.
 - EPA API responses are cached in memory for 24 hours to keep the dropdowns
   fast and avoid hammering fueleconomy.gov.
+- Tank-size matches are estimates because the EPA and CarAPI trim identifiers
+  are not directly compatible. Verify a suggested size against the vehicle's
+  owner's manual.

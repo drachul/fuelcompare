@@ -28,6 +28,18 @@
     errorBox.textContent = message;
   }
 
+  const splitSlider = document.getElementById("city-highway-slider");
+  const cityWeightLabel = document.getElementById("city-weight-label");
+  const highwayWeightLabel = document.getElementById("highway-weight-label");
+
+  function updateSplitLabels() {
+    const city = parseInt(splitSlider.value, 10);
+    cityWeightLabel.textContent = `${city}% city`;
+    highwayWeightLabel.textContent = `${100 - city}% highway`;
+  }
+  splitSlider.addEventListener("input", updateSplitLabels);
+  updateSplitLabels();
+
   function resetSelect(select, placeholder) {
     select.innerHTML = `<option value="">${placeholder}</option>`;
     select.disabled = true;
@@ -57,8 +69,8 @@
     const card = frag.querySelector(".vehicle-card");
     card.dataset.index = String(index);
 
-    const labelInput = card.querySelector(".v-label");
-    labelInput.value = defaultLabel || `Vehicle ${index + 1}`;
+    const labelEl = card.querySelector(".v-label");
+    const placeholderLabel = defaultLabel || `Vehicle ${index + 1}`;
 
     const yearSel = card.querySelector(".v-year");
     const makeSel = card.querySelector(".v-make");
@@ -67,15 +79,52 @@
     const cityInput = card.querySelector(".v-city");
     const highwayInput = card.querySelector(".v-highway");
     const fuelSel = card.querySelector(".v-fuel");
+    const tankInput = card.querySelector(".v-tank");
+    const tankUnitSel = card.querySelector(".v-tank-unit");
+    const tankOptions = card.querySelector(".v-tank-options");
+    const tankHint = card.querySelector(".v-tank-hint");
     const note = card.querySelector(".v-note");
+    let vehicleLoadSeq = 0;
+
+    const tankOptionsId = `tank-options-${index}`;
+    tankOptions.id = tankOptionsId;
+    tankInput.setAttribute("list", tankOptionsId);
+
+    function clearTankLookup() {
+      tankInput.value = "";
+      tankUnitSel.value = "liter";
+      tankOptions.replaceChildren();
+      tankHint.hidden = true;
+      tankHint.textContent = "";
+    }
+
+    function selectedText(select) {
+      return select.value ? select.options[select.selectedIndex].text : "";
+    }
+
+    function updateLabel() {
+      const year = selectedText(yearSel);
+      const make = selectedText(makeSel);
+      const model = selectedText(modelSel);
+      const trim = selectedText(trimSel);
+      if (year && make && model) {
+        labelEl.textContent = trim ? `${year} ${make} ${model} — ${trim}` : `${year} ${make} ${model}`;
+      } else {
+        labelEl.textContent = placeholderLabel;
+      }
+    }
+    updateLabel();
 
     ensureYears(yearSel).catch((err) => showError(err.message));
 
     yearSel.addEventListener("change", async () => {
+      vehicleLoadSeq += 1;
       resetSelect(makeSel, "Select make");
       resetSelect(modelSel, "Select model");
       resetSelect(trimSel, "Select trim");
       note.hidden = true;
+      clearTankLookup();
+      updateLabel();
       if (!yearSel.value) return;
       try {
         const makes = await fetchJSON(`/api/makes?year=${encodeURIComponent(yearSel.value)}`);
@@ -86,9 +135,12 @@
     });
 
     makeSel.addEventListener("change", async () => {
+      vehicleLoadSeq += 1;
       resetSelect(modelSel, "Select model");
       resetSelect(trimSel, "Select trim");
       note.hidden = true;
+      clearTankLookup();
+      updateLabel();
       if (!makeSel.value) return;
       try {
         const models = await fetchJSON(
@@ -101,8 +153,11 @@
     });
 
     modelSel.addEventListener("change", async () => {
+      vehicleLoadSeq += 1;
       resetSelect(trimSel, "Select trim");
       note.hidden = true;
+      clearTankLookup();
+      updateLabel();
       if (!modelSel.value) return;
       try {
         const trims = await fetchJSON(
@@ -115,19 +170,57 @@
     });
 
     trimSel.addEventListener("change", async () => {
+      const loadSeq = ++vehicleLoadSeq;
       note.hidden = true;
+      clearTankLookup();
+      updateLabel();
       if (!trimSel.value) return;
       try {
         const v = await fetchJSON(`/api/vehicle/${encodeURIComponent(trimSel.value)}`);
+        if (loadSeq !== vehicleLoadSeq) return;
         if (v.city_l_100km) cityInput.value = v.city_l_100km;
         if (v.highway_l_100km) highwayInput.value = v.highway_l_100km;
         if (v.fuel_type && v.fuel_type !== "unsupported") {
           fuelSel.value = v.fuel_type;
         }
-        labelInput.value = `${v.year} ${v.make} ${v.model}`;
         if (v.fuel_type === "unsupported") {
           note.hidden = false;
           note.textContent = `This vehicle's fuel type (${v.fuel_type_label || "unknown"}) isn't supported for cost comparison. Pick a gasoline or diesel trim, or set the fields manually.`;
+        }
+
+        // Tank capacity isn't in the EPA data, so match its vehicle record to
+        // CarAPI. Keep all candidate sizes available as datalist suggestions.
+        tankHint.hidden = false;
+        tankHint.textContent = "Looking up tank size…";
+        try {
+          const params = new URLSearchParams({
+            year: v.year, make: v.make, model: v.model,
+            cylinders: v.cylinders || "", displ: v.displ || "",
+            city_mpg: v.city_mpg || "", highway_mpg: v.highway_mpg || "",
+            transmission: v.trany || "", base_model: v.base_model || "",
+          });
+          const tank = await fetchJSON(`/api/tank-size?${params}`);
+          if (loadSeq !== vehicleLoadSeq) return;
+          for (const match of (tank && tank.matches) || []) {
+            const option = document.createElement("option");
+            option.value = match.capacity_l;
+            option.label = match.matched_trim;
+            tankOptions.appendChild(option);
+          }
+          if (tank && tank.capacity_l) {
+            tankInput.value = tank.capacity_l;
+            tankUnitSel.value = "liter";
+            tankHint.textContent = tank.matched_trim
+              ? `Estimated from ${tank.matched_trim} via CarAPI — verify against your owner's manual.`
+              : "Estimated via CarAPI — verify against your owner's manual.";
+          } else if (tank && tank.matches && tank.matches.length) {
+            tankHint.textContent = "Several tank sizes match. Choose a suggestion based on the exact trim, or enter it manually.";
+          } else {
+            tankHint.textContent = "No automatic tank-size match found. Enter it manually.";
+          }
+        } catch (_tankErr) {
+          if (loadSeq !== vehicleLoadSeq) return;
+          tankHint.textContent = "Tank-size lookup is unavailable. Enter it manually.";
         }
       } catch (err) {
         showError(err.message);
@@ -149,9 +242,10 @@
       unit: document.getElementById("distance-unit").value,
       period: document.getElementById("distance-period").value,
     };
+    const cityShare = parseInt(splitSlider.value, 10);
     const weighting = {
-      city: parseFloat(document.getElementById("city-weight").value),
-      highway: parseFloat(document.getElementById("highway-weight").value),
+      city: cityShare,
+      highway: 100 - cityShare,
     };
     const price_unit = document.getElementById("price-unit").value;
     const prices = {
@@ -162,7 +256,7 @@
     };
 
     const vehicles = Array.from(document.querySelectorAll(".vehicle-card")).map((card) => ({
-      label: card.querySelector(".v-label").value,
+      label: card.querySelector(".v-label").textContent,
       city_l_100km: parseFloat(card.querySelector(".v-city").value),
       highway_l_100km: parseFloat(card.querySelector(".v-highway").value),
       fuel_type: card.querySelector(".v-fuel").value,

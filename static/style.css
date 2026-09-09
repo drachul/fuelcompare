@@ -68,6 +68,27 @@ main {
   flex-wrap: wrap;
 }
 
+.split-field { grid-column: 1 / -1; }
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider-group input[type="range"] {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+  padding: 0;
+}
+.slider-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 72px;
+}
+#highway-weight-label { text-align: right; }
+
 .prices-grid { display: flex; flex-wrap: wrap; gap: 14px; }
 .price-label {
   display: flex;
@@ -142,6 +163,9 @@ input[type="number"] { width: 100px; }
   flex: 1;
   font-weight: 700;
   font-size: 1rem;
+  display: flex;
+  align-items: center;
+  color: var(--text);
 }
 
 .vehicle-grid {
@@ -155,6 +179,11 @@ input[type="number"] { width: 100px; }
   margin: 10px 0 0;
   font-size: 0.85rem;
   color: var(--danger);
+}
+
+.v-tank-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .error-box {

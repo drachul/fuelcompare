@@ -3,4 +3,7 @@ services:
     build: .
     ports:
       - "8080:8080"
+    environment:
+      - CARAPI_API_TOKEN
+      - CARAPI_API_SECRET
     restart: unless-stopped

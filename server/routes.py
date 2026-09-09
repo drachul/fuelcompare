@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from . import epa_client
+from . import carapi_client, epa_client
 from .calc import CalcError, compute_comparison
 
 bp = Blueprint("api", __name__)
@@ -61,6 +61,34 @@ def vehicle(vehicle_id):
         return jsonify(epa_client.get_vehicle(vehicle_id))
     except epa_client.EpaApiError as exc:
         return jsonify({"error": str(exc)}), 502
+
+
+@bp.get("/tank-size")
+def tank_size():
+    year = request.args.get("year", "")
+    make = request.args.get("make", "")
+    model = request.args.get("model", "")
+    cylinders = request.args.get("cylinders", "")
+    displ = request.args.get("displ", "")
+    city_mpg = request.args.get("city_mpg", "")
+    highway_mpg = request.args.get("highway_mpg", "")
+    transmission = request.args.get("transmission", "")
+    base_model = request.args.get("base_model", "")
+    if not year or not make or not model:
+        return jsonify({"error": "year, make and model are required"}), 400
+    return jsonify(
+        carapi_client.find_tank_capacity(
+            year,
+            make,
+            model,
+            cylinders,
+            displ,
+            city_mpg,
+            highway_mpg,
+            transmission,
+            base_model,
+        )
+    )
 
 
 @bp.post("/compare")

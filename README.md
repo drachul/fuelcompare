@@ -68,4 +68,6 @@ python app.py
   service cannot be reached, fuel prices can still be entered manually.
 - Tank-size matches are estimates because the EPA and CarAPI trim identifiers
   are not directly compatible. Verify a suggested size against the vehicle's
-  owner's manual.
+  owner's manual. When no single size can be selected automatically, the UI
+  also links to the vehicle's make/model/year page on
+  [FuelTankCap](https://fueltankcap.com/) for manual lookup.

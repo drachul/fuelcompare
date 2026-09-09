@@ -28,6 +28,36 @@
     errorBox.textContent = message;
   }
 
+  const fuelTankCapModelAliases = {
+    "ford:f150": "f-150",
+    "ford:f250": "f-250",
+    "ford:f350": "f-350",
+    "ford:f450": "f-450",
+  };
+
+  function urlSlug(value) {
+    return value
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  function fuelTankCapVehicleUrl(make, model, year) {
+    const makeSlug = urlSlug(make || "");
+    const simplifiedModel = (model || "")
+      .replace(/\s+(?:pickup|cab chassis|2wd|4wd|awd|fwd|rwd)\b.*$/i, "")
+      .trim();
+    let modelSlug = urlSlug(simplifiedModel);
+    modelSlug = fuelTankCapModelAliases[`${makeSlug}:${modelSlug}`] || modelSlug;
+    if (!makeSlug || !modelSlug) return "https://fueltankcap.com/";
+    const modelUrl = `https://fueltankcap.com/${makeSlug}/${modelSlug}`;
+    return /^\d{4}$/.test(String(year || "")) ? `${modelUrl}/${year}` : modelUrl;
+  }
+
   const priceLocation = document.getElementById("fuel-price-location");
   const loadFuelPricesButton = document.getElementById("load-fuel-prices");
   const fuelPriceNote = document.getElementById("fuel-price-note");
@@ -183,6 +213,19 @@
     tankOptions.id = tankOptionsId;
     tankInput.setAttribute("list", tankOptionsId);
 
+    function setTankHint(message, manualLookupUrl = "") {
+      tankHint.hidden = false;
+      tankHint.replaceChildren(document.createTextNode(message));
+      if (manualLookupUrl) {
+        const lookupLink = document.createElement("a");
+        lookupLink.href = manualLookupUrl;
+        lookupLink.target = "_blank";
+        lookupLink.rel = "noopener";
+        lookupLink.textContent = " Look it up on FuelTankCap.";
+        tankHint.appendChild(lookupLink);
+      }
+    }
+
     function clearTankLookup() {
       tankInput.value = "";
       tankUnitSel.value = "liter";
@@ -271,6 +314,11 @@
       try {
         const v = await fetchJSON(`/api/vehicle/${encodeURIComponent(trimSel.value)}`);
         if (loadSeq !== vehicleLoadSeq) return;
+        const manualTankLookupUrl = fuelTankCapVehicleUrl(
+          v.make,
+          v.base_model || v.model,
+          v.year
+        );
         if (v.city_l_100km) cityInput.value = v.city_l_100km;
         if (v.highway_l_100km) highwayInput.value = v.highway_l_100km;
         if (v.fuel_type && v.fuel_type !== "unsupported") {
@@ -283,8 +331,7 @@
 
         // Tank capacity isn't in the EPA data, so match its vehicle record to
         // CarAPI. Keep all candidate sizes available as datalist suggestions.
-        tankHint.hidden = false;
-        tankHint.textContent = "Looking up tank size…";
+        setTankHint("Looking up tank size…");
         try {
           const params = new URLSearchParams({
             year: v.year, make: v.make, model: v.model,
@@ -303,17 +350,28 @@
           if (tank && tank.capacity_l) {
             tankInput.value = tank.capacity_l;
             tankUnitSel.value = "liter";
-            tankHint.textContent = tank.matched_trim
-              ? `Estimated from ${tank.matched_trim} via CarAPI — verify against your owner's manual.`
-              : "Estimated via CarAPI — verify against your owner's manual.";
+            setTankHint(
+              tank.matched_trim
+                ? `Estimated from ${tank.matched_trim} via CarAPI — verify against your owner's manual.`
+                : "Estimated via CarAPI — verify against your owner's manual."
+            );
           } else if (tank && tank.matches && tank.matches.length) {
-            tankHint.textContent = "Several tank sizes match. Choose a suggestion based on the exact trim, or enter it manually.";
+            setTankHint(
+              "Several tank sizes match. Choose a suggestion based on the exact trim, or enter it manually.",
+              manualTankLookupUrl
+            );
           } else {
-            tankHint.textContent = "No automatic tank-size match found. Enter it manually.";
+            setTankHint(
+              "No automatic tank-size match found. Enter it manually.",
+              manualTankLookupUrl
+            );
           }
         } catch (_tankErr) {
           if (loadSeq !== vehicleLoadSeq) return;
-          tankHint.textContent = "Tank-size lookup is unavailable. Enter it manually.";
+          setTankHint(
+            "Tank-size lookup is unavailable. Enter it manually.",
+            manualTankLookupUrl
+          );
         }
       } catch (err) {
         showError(err.message);

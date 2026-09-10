@@ -725,17 +725,29 @@
   }
 
   function renderResults(data) {
+    const bestValues = {
+      overall_l_100km: Math.min(...data.vehicles.map((vehicle) => vehicle.overall_l_100km)),
+      range_km: Math.max(...data.vehicles.map((vehicle) => vehicle.range_km)),
+      cost_per_tank: Math.min(...data.vehicles.map((vehicle) => vehicle.cost_per_tank)),
+      fillups_per_year: Math.min(...data.vehicles.map((vehicle) => vehicle.fillups_per_year)),
+      annual_cost: Math.min(...data.vehicles.map((vehicle) => vehicle.annual_cost)),
+    };
+
+    function metricCell(metric, value, displayValue) {
+      const isBest = value === bestValues[metric];
+      return `<td${isBest ? ' class="best-value" title="Best value"' : ""}>${displayValue}</td>`;
+    }
+
     const rows = data.vehicles
       .map((v) => {
-        const cheapest = v.label === data.cheapest_label;
         const delta = v.delta_vs_cheapest > 0 ? `+$${v.delta_vs_cheapest.toFixed(2)}` : "—";
-        return `<tr class="${cheapest ? "cheapest" : ""}">
+        return `<tr>
           <td>${escapeHtml(v.label)}</td>
-          <td>${v.overall_l_100km.toFixed(2)}</td>
-          <td>${v.range_km.toFixed(0)}</td>
-          <td>$${v.cost_per_tank.toFixed(2)}</td>
-          <td>${v.fillups_per_year.toFixed(1)}</td>
-          <td>$${v.annual_cost.toFixed(2)}</td>
+          ${metricCell("overall_l_100km", v.overall_l_100km, v.overall_l_100km.toFixed(2))}
+          ${metricCell("range_km", v.range_km, v.range_km.toFixed(0))}
+          ${metricCell("cost_per_tank", v.cost_per_tank, `$${v.cost_per_tank.toFixed(2)}`)}
+          ${metricCell("fillups_per_year", v.fillups_per_year, v.fillups_per_year.toFixed(1))}
+          ${metricCell("annual_cost", v.annual_cost, `$${v.annual_cost.toFixed(2)}`)}
           <td>${delta}</td>
         </tr>`;
       })

@@ -282,7 +282,7 @@
 
     const savedSel = card.querySelector(".v-saved");
     const entryModeToggle = card.querySelector(".entry-mode-toggle");
-    const epaFields = card.querySelector(".v-epa-fields");
+    const lookupFields = card.querySelectorAll(".v-epa-fields");
     const manualFields = card.querySelector(".manual-vehicle-fields");
     const manualYearInput = card.querySelector(".v-manual-year");
     const manualMakeInput = card.querySelector(".v-manual-make");
@@ -401,8 +401,8 @@
     function setManualMode(enabled, reset = true) {
       card.dataset.entryMode = enabled ? "manual" : "epa";
       manualFields.hidden = !enabled;
-      epaFields.hidden = enabled;
-      entryModeToggle.textContent = enabled ? "Use EPA lookup" : "Enter heavy-duty / manual";
+      for (const field of lookupFields) field.hidden = enabled;
+      entryModeToggle.textContent = enabled ? "Use vehicle lookup" : "Enter heavy-duty / manual";
       entryModeToggle.setAttribute("aria-pressed", String(enabled));
       if (reset) {
         vehicleLoadSeq += 1;
@@ -613,7 +613,7 @@
           return;
         }
 
-        // Tank capacity isn't in the EPA data, so match its vehicle record to
+        // Tank capacity isn't in the efficiency datasets, so match the vehicle to
         // CarAPI. Keep all candidate sizes available as datalist suggestions.
         setTankHint("Looking up tank size…");
         try {

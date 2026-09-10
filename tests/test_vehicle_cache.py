@@ -22,6 +22,22 @@ EPA_VEHICLE = {
     "highway_l_100km": 5.737,
 }
 
+NRCAN_VEHICLE = {
+    "id": "nrcan:2026:abc123",
+    "year": "2026",
+    "make": "Toyota",
+    "model": "Camry AWD",
+    "base_model": "Camry AWD",
+    "trany": "AS8",
+    "cylinders": "4",
+    "displ": "2.5",
+    "fuel_type": "regular",
+    "city_mpg": 25.848,
+    "highway_mpg": 35.107,
+    "city_l_100km": 9.1,
+    "highway_l_100km": 6.7,
+}
+
 
 class VehicleCacheRouteTests(unittest.TestCase):
     def setUp(self):
@@ -50,6 +66,25 @@ class VehicleCacheRouteTests(unittest.TestCase):
         self.assertEqual(second.status_code, 200)
         self.assertTrue(second.get_json()["cached"])
         self.assertEqual(second.get_json()["city_l_100km"], 8.111)
+        get_vehicle.assert_not_called()
+
+    @patch("server.routes.nrcan_client.get_vehicle")
+    def test_nrcan_vehicle_is_saved_and_reused(self, get_vehicle):
+        get_vehicle.return_value = NRCAN_VEHICLE.copy()
+        vehicle_id = NRCAN_VEHICLE["id"]
+
+        first = self.app().test_client().get(f"/api/vehicle/{vehicle_id}")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.get_json()["source"], "NRCan")
+        self.assertFalse(first.get_json()["cached"])
+
+        get_vehicle.reset_mock()
+        second = self.app().test_client().get(f"/api/vehicle/{vehicle_id}")
+
+        self.assertEqual(second.status_code, 200)
+        self.assertTrue(second.get_json()["cached"])
+        self.assertEqual(second.get_json()["highway_l_100km"], 6.7)
         get_vehicle.assert_not_called()
 
     @patch("server.routes.epa_client.get_vehicle")

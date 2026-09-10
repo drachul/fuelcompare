@@ -1,11 +1,53 @@
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import Blueprint, current_app, jsonify, request
 
-from . import carapi_client, epa_client, statcan_client, vehicle_store
+from . import carapi_client, epa_client, nrcan_client, statcan_client, vehicle_store
 from .calc import LITERS_PER_GALLON, CalcError, compute_comparison
 
 bp = Blueprint("api", __name__)
+
+
+class VehicleLookupError(RuntimeError):
+    pass
+
+
+def _lookup_sources(*loaders):
+    results = []
+    errors = []
+    with ThreadPoolExecutor(max_workers=len(loaders)) as executor:
+        futures = [executor.submit(loader) for loader in loaders]
+        for future in futures:
+            try:
+                results.append(future.result())
+            except (nrcan_client.NrcanDataError, epa_client.EpaApiError) as exc:
+                errors.append(str(exc))
+    if not results:
+        raise VehicleLookupError("Vehicle lookup is unavailable. " + " ".join(errors))
+    return results
+
+
+def _merge_strings(groups, *, years=False):
+    merged = {}
+    for group in groups:
+        for value in group:
+            text = str(value).strip()
+            if text:
+                merged.setdefault(text.casefold(), text)
+    if years:
+        return sorted(merged.values(), key=int, reverse=True)
+    return sorted(merged.values(), key=str.casefold)
+
+
+def _source_options(options, source):
+    return [
+        {
+            "text": f'{option["text"]} — {source}',
+            "value": option["value"],
+        }
+        for option in options
+    ]
 
 
 @bp.get("/health")
@@ -16,8 +58,9 @@ def health():
 @bp.get("/years")
 def years():
     try:
-        return jsonify(epa_client.get_years())
-    except epa_client.EpaApiError as exc:
+        groups = _lookup_sources(nrcan_client.get_years, epa_client.get_years)
+        return jsonify(_merge_strings(groups, years=True))
+    except VehicleLookupError as exc:
         return jsonify({"error": str(exc)}), 502
 
 
@@ -27,8 +70,12 @@ def makes():
     if not year:
         return jsonify({"error": "year is required"}), 400
     try:
-        return jsonify(epa_client.get_makes(year))
-    except epa_client.EpaApiError as exc:
+        groups = _lookup_sources(
+            lambda: nrcan_client.get_makes(year),
+            lambda: epa_client.get_makes(year),
+        )
+        return jsonify(_merge_strings(groups))
+    except VehicleLookupError as exc:
         return jsonify({"error": str(exc)}), 502
 
 
@@ -39,8 +86,12 @@ def models():
     if not year or not make:
         return jsonify({"error": "year and make are required"}), 400
     try:
-        return jsonify(epa_client.get_models(year, make))
-    except epa_client.EpaApiError as exc:
+        groups = _lookup_sources(
+            lambda: nrcan_client.get_models(year, make),
+            lambda: epa_client.get_models(year, make),
+        )
+        return jsonify(_merge_strings(groups))
+    except VehicleLookupError as exc:
         return jsonify({"error": str(exc)}), 502
 
 
@@ -52,8 +103,19 @@ def trims():
     if not year or not make or not model:
         return jsonify({"error": "year, make and model are required"}), 400
     try:
-        return jsonify(epa_client.get_trims(year, make, model))
-    except epa_client.EpaApiError as exc:
+        groups = _lookup_sources(
+            lambda: nrcan_client.get_trims(year, make, model),
+            lambda: _source_options(epa_client.get_trims(year, make, model), "EPA"),
+        )
+        options = []
+        seen = set()
+        for group in groups:
+            for option in group:
+                if option["value"] not in seen:
+                    seen.add(option["value"])
+                    options.append(option)
+        return jsonify(options)
+    except VehicleLookupError as exc:
         return jsonify({"error": str(exc)}), 502
 
 
@@ -65,11 +127,16 @@ def vehicle(vehicle_id):
         cached["cached"] = True
         return jsonify(cached)
     try:
-        result = epa_client.get_vehicle(vehicle_id)
-        saved = vehicle_store.save_vehicle(result, "EPA")
+        if vehicle_id.startswith("nrcan:"):
+            result = nrcan_client.get_vehicle(vehicle_id)
+            source = "NRCan"
+        else:
+            result = epa_client.get_vehicle(vehicle_id)
+            source = "EPA"
+        saved = vehicle_store.save_vehicle(result, source)
         saved["cached"] = False
         return jsonify(saved)
-    except epa_client.EpaApiError as exc:
+    except (nrcan_client.NrcanDataError, epa_client.EpaApiError) as exc:
         return jsonify({"error": str(exc)}), 502
 
 

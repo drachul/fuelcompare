@@ -612,6 +612,21 @@ button:disabled {
   line-height: 1.4;
 }
 
+.vehicle-data-note {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 0.67rem;
+}
+
+.vehicle-data-note a {
+  color: var(--accent);
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.vehicle-data-note a:hover { text-decoration: underline; }
+
 .tank-group input { flex: 1; }
 
 .tank-group select {

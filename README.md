@@ -12,12 +12,14 @@ fill-ups / year  = annual km / range per tank
 annual fuel cost = fill-ups per year * cost per tank
 ```
 
-Vehicle city/highway consumption and fuel type are looked up for free from the
-US DOE/EPA [fueleconomy.gov](https://www.fueleconomy.gov/feg/ws/index.shtml)
-public API (no API key required, covers model years back to 1984). That API has
-no tank-capacity field, so the app also does a best-effort lookup against
+Vehicle city/highway consumption and fuel type are looked up from Natural
+Resources Canada's official [Fuel Consumption Ratings](https://fcr-ccc.nrcan-rncan.gc.ca/en/Search)
+datasets and the US DOE/EPA [fueleconomy.gov](https://www.fueleconomy.gov/feg/ws/index.shtml)
+public API. NRCan supplies Canadian ratings from 1995 onward, while the EPA API
+adds coverage back to 1984. Neither source includes tank capacity, so the app
+also does a best-effort lookup against
 [CarAPI](https://carapi.app/). It ranks same-year/make/model records using
-engine, transmission, and EPA MPG data. A clear match is pre-filled; ambiguous
+engine, transmission, and fuel-economy data. A clear match is pre-filled; ambiguous
 matches are offered as suggestions, and the field always remains editable.
 
 CarAPI's unauthenticated demo data covers model years 2015-2020. To enable its
@@ -79,8 +81,8 @@ python app.py
   for cost calculations, matching the original spreadsheet. Electric/hybrid-
   plug-in/CNG/hydrogen/flex-fuel trims are flagged as unsupported when picked
   from the EPA dropdowns — you can still fill in the fields manually.
-- EPA API responses are cached in memory for 24 hours to keep the dropdowns
-  fast and avoid hammering fueleconomy.gov. Selected vehicle records are also
+- NRCan datasets and EPA API responses are cached in memory for 24 hours to
+  keep dropdowns fast and avoid unnecessary upstream requests. Selected vehicle records are also
   cached persistently in SQLite. Set `FUELCOMPARE_DB_PATH` to choose a different
   database location; locally it defaults to `data/fuelcompare.db`.
 - Statistics Canada data are also cached in memory for 24 hours. If that

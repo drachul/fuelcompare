@@ -52,6 +52,12 @@
     errorBox.textContent = message;
   }
 
+  function escapeHtml(value) {
+    const element = document.createElement("span");
+    element.textContent = String(value ?? "");
+    return element.innerHTML;
+  }
+
   const fuelTankCapModelAliases = {
     "ford:f150": "f-150",
     "ford:f250": "f-250",
@@ -80,6 +86,36 @@
     if (!makeSlug || !modelSlug) return "https://fueltankcap.com/";
     const modelUrl = `https://fueltankcap.com/${makeSlug}/${modelSlug}`;
     return /^\d{4}$/.test(String(year || "")) ? `${modelUrl}/${year}` : modelUrl;
+  }
+
+  const fuellyMakeAliases = {
+    chevy: "chevrolet",
+  };
+
+  const fuellyModelAliases = {
+    "ford:f350": "f-350",
+    "ford:f-350": "f-350",
+    "ford:f350-super-duty": "f-350",
+    "ford:f-350-super-duty": "f-350",
+    "chevrolet:silverado-3500": "silverado_3500_hd",
+    "chevrolet:silverado-3500hd": "silverado_3500_hd",
+    "chevrolet:silverado-3500-hd": "silverado_3500_hd",
+    "gmc:sierra-3500": "sierra_3500_hd",
+    "gmc:sierra-3500hd": "sierra_3500_hd",
+    "gmc:sierra-3500-hd": "sierra_3500_hd",
+    "dodge:ram-3500": "ram_3500",
+    "ram:3500": "3500",
+    "ram:ram-3500": "3500",
+  };
+
+  function fuellyVehicleUrl(make, model, year) {
+    const rawMakeSlug = urlSlug(make || "");
+    const makeSlug = fuellyMakeAliases[rawMakeSlug] || rawMakeSlug;
+    const modelKey = urlSlug(model || "");
+    const modelSlug = fuellyModelAliases[`${makeSlug}:${modelKey}`] || modelKey.replace(/-/g, "_");
+    if (!makeSlug || !modelSlug) return "https://www.fuelly.com/car";
+    const modelYear = /^\d{4}$/.test(String(year || "")) ? year : "all";
+    return `https://www.fuelly.com/car/${makeSlug}/${modelSlug}/${modelYear}`;
   }
 
   const priceLocation = document.getElementById("fuel-price-location");
@@ -245,6 +281,16 @@
     let fallbackLabel = placeholderLabel;
 
     const savedSel = card.querySelector(".v-saved");
+    const entryModeToggle = card.querySelector(".entry-mode-toggle");
+    const epaFields = card.querySelector(".v-epa-fields");
+    const manualFields = card.querySelector(".manual-vehicle-fields");
+    const manualYearInput = card.querySelector(".v-manual-year");
+    const manualMakeInput = card.querySelector(".v-manual-make");
+    const manualModelInput = card.querySelector(".v-manual-model");
+    const manualTrimInput = card.querySelector(".v-manual-trim");
+    const combinedMpgInput = card.querySelector(".v-combined-mpg");
+    const applyMpgButton = card.querySelector(".v-apply-mpg");
+    const fuellyLink = card.querySelector(".v-fuelly-link");
     const yearSel = card.querySelector(".v-year");
     const makeSel = card.querySelector(".v-make");
     const modelSel = card.querySelector(".v-model");
@@ -258,6 +304,7 @@
     const tankHint = card.querySelector(".v-tank-hint");
     const note = card.querySelector(".v-note");
     let vehicleLoadSeq = 0;
+    card.dataset.entryMode = "epa";
 
     const tankOptionsId = `tank-options-${index}`;
     tankOptions.id = tankOptionsId;
@@ -288,7 +335,44 @@
       return select.value ? select.options[select.selectedIndex].text : "";
     }
 
+    function manualIdentity() {
+      return {
+        year: manualYearInput.value.trim(),
+        make: manualMakeInput.value.trim(),
+        model: manualModelInput.value.trim(),
+        trim: manualTrimInput.value.trim(),
+      };
+    }
+
+    function updateManualReferences() {
+      const identity = manualIdentity();
+      const hasVehicle = Boolean(identity.make && identity.model);
+      fuellyLink.hidden = !hasVehicle;
+      fuellyLink.href = fuellyVehicleUrl(identity.make, identity.model, identity.year);
+      if (card.dataset.entryMode === "manual" && hasVehicle) {
+        setTankHint(
+          tankInput.value
+            ? "Verify the entered tank size if needed."
+            : "Enter the tank size manually.",
+          fuelTankCapVehicleUrl(identity.make, identity.model, identity.year)
+        );
+      } else if (card.dataset.entryMode === "manual") {
+        tankHint.hidden = true;
+        tankHint.textContent = "";
+      }
+    }
+
     function updateLabel() {
+      if (card.dataset.entryMode === "manual") {
+        const identity = manualIdentity();
+        const label = [identity.year, identity.make, identity.model]
+          .filter(Boolean)
+          .join(" ");
+        labelEl.textContent = label
+          ? identity.trim ? `${label} — ${identity.trim}` : label
+          : fallbackLabel;
+        return;
+      }
       const year = selectedText(yearSel);
       const make = selectedText(makeSel);
       const model = selectedText(modelSel);
@@ -314,6 +398,65 @@
       }
     }
 
+    function setManualMode(enabled, reset = true) {
+      card.dataset.entryMode = enabled ? "manual" : "epa";
+      manualFields.hidden = !enabled;
+      epaFields.hidden = enabled;
+      entryModeToggle.textContent = enabled ? "Use EPA lookup" : "Enter heavy-duty / manual";
+      entryModeToggle.setAttribute("aria-pressed", String(enabled));
+      if (reset) {
+        vehicleLoadSeq += 1;
+        clearSavedIdentity();
+        yearSel.value = "";
+        resetSelect(makeSel, "Select make");
+        resetSelect(modelSel, "Select model");
+        resetSelect(trimSel, "Select trim");
+        cityInput.value = "";
+        highwayInput.value = "";
+        note.hidden = true;
+        clearTankLookup();
+      }
+      updateLabel();
+      updateManualReferences();
+    }
+
+    entryModeToggle.addEventListener("click", () => {
+      setManualMode(card.dataset.entryMode !== "manual");
+    });
+
+    for (const input of [manualYearInput, manualMakeInput, manualModelInput, manualTrimInput]) {
+      input.addEventListener("input", () => {
+        savedSel.value = "";
+        for (const field of ["epaVehicleId", "year", "make", "model", "trim"]) {
+          delete card.dataset[field];
+        }
+        fallbackLabel = placeholderLabel;
+        updateLabel();
+        updateManualReferences();
+      });
+    }
+
+    applyMpgButton.addEventListener("click", () => {
+      const mpg = parseFloat(combinedMpgInput.value);
+      if (!Number.isFinite(mpg) || mpg <= 0) {
+        combinedMpgInput.setCustomValidity("Enter a combined MPG greater than zero.");
+        combinedMpgInput.reportValidity();
+        return;
+      }
+      combinedMpgInput.setCustomValidity("");
+      const litersPer100Km = (235.214583 / mpg).toFixed(3);
+      cityInput.value = litersPer100Km;
+      highwayInput.value = litersPer100Km;
+    });
+
+    combinedMpgInput.addEventListener("input", () => {
+      combinedMpgInput.setCustomValidity("");
+    });
+
+    tankInput.addEventListener("input", () => {
+      if (card.dataset.entryMode === "manual") updateManualReferences();
+    });
+
     function rememberIdentity(vehicle, trim = "") {
       if (vehicle.record_id) card.dataset.recordId = String(vehicle.record_id);
       if (vehicle.epa_vehicle_id || vehicle.id) {
@@ -333,6 +476,13 @@
       resetSelect(trimSel, "Select trim");
       rememberIdentity(vehicle);
       fallbackLabel = vehicle.label || placeholderLabel;
+      const isManual = !vehicle.epa_vehicle_id;
+      manualYearInput.value = isManual ? vehicle.year || "" : "";
+      manualMakeInput.value = isManual ? vehicle.make || "" : "";
+      manualModelInput.value = isManual ? vehicle.model || "" : "";
+      manualTrimInput.value = isManual ? vehicle.trim || "" : "";
+      combinedMpgInput.value = "";
+      setManualMode(isManual, false);
       labelEl.textContent = fallbackLabel;
       cityInput.value = vehicle.city_l_100km || "";
       highwayInput.value = vehicle.highway_l_100km || "";
@@ -357,6 +507,7 @@
           fuelTankCapVehicleUrl(vehicle.make, vehicle.base_model || vehicle.model, vehicle.year)
         );
       }
+      updateManualReferences();
     }
 
     savedSel.addEventListener("change", async () => {
@@ -543,24 +694,32 @@
       diesel: parseFloat(document.getElementById("price-diesel").value),
     };
 
-    const vehicles = Array.from(document.querySelectorAll(".vehicle-card")).map((card) => ({
-      label: card.querySelector(".v-label").textContent,
-      record_id: card.dataset.recordId || "",
-      epa_vehicle_id: card.dataset.epaVehicleId || "",
-      year: card.dataset.year || card.querySelector(".v-year").value,
-      make: card.dataset.make || card.querySelector(".v-make").value,
-      model: card.dataset.model || card.querySelector(".v-model").value,
-      trim: card.dataset.trim || (
-        card.querySelector(".v-trim").value
-          ? card.querySelector(".v-trim").options[card.querySelector(".v-trim").selectedIndex].text
-          : ""
-      ),
-      city_l_100km: parseFloat(card.querySelector(".v-city").value),
-      highway_l_100km: parseFloat(card.querySelector(".v-highway").value),
-      fuel_type: card.querySelector(".v-fuel").value,
-      tank_size: parseFloat(card.querySelector(".v-tank").value),
-      tank_unit: card.querySelector(".v-tank-unit").value,
-    }));
+    const vehicles = Array.from(document.querySelectorAll(".vehicle-card")).map((card) => {
+      const isManual = card.dataset.entryMode === "manual";
+      const trimSelect = card.querySelector(".v-trim");
+      return {
+        label: card.querySelector(".v-label").textContent,
+        record_id: card.dataset.recordId || "",
+        epa_vehicle_id: isManual ? "" : card.dataset.epaVehicleId || "",
+        year: isManual
+          ? card.querySelector(".v-manual-year").value.trim()
+          : card.dataset.year || card.querySelector(".v-year").value,
+        make: isManual
+          ? card.querySelector(".v-manual-make").value.trim()
+          : card.dataset.make || card.querySelector(".v-make").value,
+        model: isManual
+          ? card.querySelector(".v-manual-model").value.trim()
+          : card.dataset.model || card.querySelector(".v-model").value,
+        trim: isManual
+          ? card.querySelector(".v-manual-trim").value.trim()
+          : card.dataset.trim || (trimSelect.value ? trimSelect.options[trimSelect.selectedIndex].text : ""),
+        city_l_100km: parseFloat(card.querySelector(".v-city").value),
+        highway_l_100km: parseFloat(card.querySelector(".v-highway").value),
+        fuel_type: card.querySelector(".v-fuel").value,
+        tank_size: parseFloat(card.querySelector(".v-tank").value),
+        tank_unit: card.querySelector(".v-tank-unit").value,
+      };
+    });
 
     return { distance, weighting, price_unit, prices, vehicles };
   }
@@ -571,7 +730,7 @@
         const cheapest = v.label === data.cheapest_label;
         const delta = v.delta_vs_cheapest > 0 ? `+$${v.delta_vs_cheapest.toFixed(2)}` : "—";
         return `<tr class="${cheapest ? "cheapest" : ""}">
-          <td>${v.label}</td>
+          <td>${escapeHtml(v.label)}</td>
           <td>${v.overall_l_100km.toFixed(2)}</td>
           <td>${v.range_km.toFixed(0)}</td>
           <td>$${v.cost_per_tank.toFixed(2)}</td>

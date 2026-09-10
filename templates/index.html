@@ -28,10 +28,6 @@
       <p class="subtitle">Real-world fuel costs, side by side.</p>
     </div>
     <div class="header-actions">
-      <div class="header-status">
-        <span class="status-dot"></span>
-        EPA vehicle data
-      </div>
       <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false">
         <span class="theme-icon" aria-hidden="true"></span>
         <span class="theme-label">Dark</span>
@@ -166,8 +162,11 @@
         <option value="">Loading saved vehicles…</option>
       </select>
     </div>
-    <div class="vehicle-section-label"><span>Find a vehicle</span></div>
-    <div class="vehicle-grid identity-grid">
+    <div class="vehicle-section-label">
+      <span>Find a vehicle</span>
+      <button type="button" class="entry-mode-toggle" aria-pressed="false">Enter heavy-duty / manual</button>
+    </div>
+    <div class="vehicle-grid identity-grid v-epa-fields">
       <div class="field">
         <label>Year</label>
         <select class="v-year"><option value="">Select year</option></select>
@@ -184,6 +183,37 @@
         <label>Trim / engine</label>
         <select class="v-trim" disabled><option value="">Select trim</option></select>
       </div>
+    </div>
+    <div class="manual-vehicle-fields" hidden>
+      <div class="vehicle-grid manual-identity-grid">
+        <div class="field">
+          <label>Year</label>
+          <input type="number" class="v-manual-year" min="1900" max="2100" step="1" inputmode="numeric" placeholder="e.g. 2022">
+        </div>
+        <div class="field">
+          <label>Make</label>
+          <input type="text" class="v-manual-make" placeholder="e.g. Ford">
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input type="text" class="v-manual-model" placeholder="e.g. F-350">
+        </div>
+        <div class="field">
+          <label>Configuration</label>
+          <input type="text" class="v-manual-trim" placeholder="e.g. 6.7L diesel, 4×4">
+        </div>
+      </div>
+      <div class="manual-mileage-row">
+        <div class="field manual-mpg-field">
+          <label>Owner-reported combined MPG <span>US gallons</span></label>
+          <div class="inline-group manual-mpg-group">
+            <input type="number" class="v-combined-mpg" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 13.0">
+            <button type="button" class="btn-secondary v-apply-mpg">Use MPG</button>
+          </div>
+        </div>
+        <a class="vehicle-reference-link v-fuelly-link" href="https://www.fuelly.com/car" target="_blank" rel="noopener" hidden>View owner MPG on Fuelly ↗</a>
+      </div>
+      <small class="manual-entry-note">Fuelly values are owner-reported and may include towing. Using combined MPG fills both city and highway fields; adjust either value below if you know more.</small>
     </div>
     <div class="vehicle-section-label"><span>Efficiency &amp; capacity</span></div>
     <div class="vehicle-grid vehicle-details">

@@ -37,6 +37,11 @@ successful comparison. That includes tank-size lookup results and manual
 changes. Saved vehicles can be loaded into any comparison card without calling
 the external vehicle APIs again.
 
+Heavy-duty vehicles that are not present in the EPA lookup can be entered
+manually. The form links the entered make, model, and year to Fuelly for
+owner-reported mileage, converts combined US MPG to L/100 km, and saves the
+vehicle to the local SQLite cache after a successful comparison.
+
 ## Run with Docker Compose
 
 ```bash

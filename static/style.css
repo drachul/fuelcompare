@@ -60,6 +60,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html {
   min-width: 320px;
   background: var(--canvas);
@@ -154,15 +156,6 @@ h1 span { color: var(--accent); }
   font-size: 0.88rem;
 }
 
-.header-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted-bright);
-  font-size: 0.76rem;
-  font-weight: 650;
-}
-
 .header-actions {
   margin-left: auto;
   display: flex;
@@ -194,14 +187,6 @@ h1 span { color: var(--accent); }
   border: 2px solid currentColor;
   border-radius: 50%;
   background: linear-gradient(90deg, currentColor 50%, transparent 50%);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--teal);
-  box-shadow: 0 0 0 4px rgba(24, 123, 105, 0.1);
 }
 
 .app-shell {
@@ -549,15 +534,80 @@ button:disabled {
 
 .vehicle-section-label::after {
   content: "";
+  order: 2;
   height: 1px;
   flex: 1;
   background: var(--line-soft);
+}
+
+.vehicle-section-label > span { order: 1; }
+
+.entry-mode-toggle {
+  order: 3;
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.entry-mode-toggle:hover {
+  border-color: var(--accent);
+  background: rgba(88, 119, 22, 0.06);
 }
 
 .vehicle-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
+}
+
+.manual-mileage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.manual-mpg-group input { flex: 1; }
+.v-apply-mpg { white-space: nowrap; }
+
+.vehicle-reference-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(24, 123, 105, 0.28);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--teal);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vehicle-reference-link:hover {
+  border-color: var(--teal);
+  background: rgba(24, 123, 105, 0.06);
+}
+
+.manual-entry-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.4;
 }
 
 .tank-group input { flex: 1; }
@@ -705,8 +755,6 @@ tr.cheapest td {
   }
 
   .header-inner { min-height: 102px; }
-  .header-status { display: none; }
-
   .app-shell {
     padding-block: 18px 42px;
     gap: 12px;
@@ -720,6 +768,8 @@ tr.cheapest td {
   .fuel-toolbar { grid-template-columns: minmax(0, 1fr) 104px; }
   .lookup-button { grid-column: 1 / -1; }
   .vehicle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .manual-mileage-row { grid-template-columns: 1fr; }
+  .vehicle-reference-link { justify-self: start; }
 
   .site-footer {
     flex-direction: column;
@@ -779,6 +829,14 @@ tr.cheapest td {
   .price-meta { align-items: flex-start; }
   .prices-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vehicle-grid { grid-template-columns: 1fr; }
+
+  .vehicle-section-label { flex-wrap: wrap; }
+  .vehicle-section-label::after { display: none; }
+  .entry-mode-toggle { margin-left: auto; }
+  .vehicle-reference-link {
+    width: 100%;
+    min-height: 44px;
+  }
 
   .comparison-panel .panel-header {
     display: grid;

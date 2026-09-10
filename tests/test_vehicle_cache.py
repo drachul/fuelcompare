@@ -111,7 +111,7 @@ class VehicleCacheRouteTests(unittest.TestCase):
         self.assertTrue(second.get_json()["cached"])
         self.assertEqual(second.get_json()["matches"], ambiguous["matches"])
 
-    def test_manual_comparison_is_saved_and_can_be_loaded(self):
+    def test_heavy_duty_manual_comparison_is_saved_and_can_be_loaded(self):
         payload = {
             "distance": {"value": 12000, "unit": "km", "period": "year"},
             "weighting": {"city": 50, "highway": 50},
@@ -123,15 +123,15 @@ class VehicleCacheRouteTests(unittest.TestCase):
                 "diesel": 1.8,
             },
             "vehicles": [{
-                "label": "My commuter",
-                "year": "2009",
-                "make": "Honda",
-                "model": "Fit",
-                "trim": "Manual entry",
-                "city_l_100km": 7.1,
-                "highway_l_100km": 5.8,
-                "fuel_type": "regular",
-                "tank_size": 40,
+                "label": "2022 Ford F-350 — 6.7L diesel, 4x4",
+                "year": "2022",
+                "make": "Ford",
+                "model": "F-350",
+                "trim": "6.7L diesel, 4x4",
+                "city_l_100km": 18.093,
+                "highway_l_100km": 18.093,
+                "fuel_type": "diesel",
+                "tank_size": 128,
                 "tank_unit": "liter",
             }],
         }
@@ -143,9 +143,11 @@ class VehicleCacheRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(saved), 1)
-        self.assertEqual(saved[0]["label"], "My commuter")
-        self.assertEqual(loaded["tank_size"], 40)
-        self.assertEqual(loaded["city_l_100km"], 7.1)
+        self.assertEqual(saved[0]["label"], "2022 Ford F-350 — 6.7L diesel, 4x4")
+        self.assertEqual(loaded["make"], "Ford")
+        self.assertEqual(loaded["model"], "F-350")
+        self.assertEqual(loaded["tank_size"], 128)
+        self.assertEqual(loaded["city_l_100km"], 18.093)
 
     @patch("server.routes.epa_client.get_vehicle")
     def test_manual_corrections_override_but_do_not_discard_epa_data(self, get_vehicle):

@@ -461,7 +461,7 @@ button:disabled {
 
 #vehicles {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -568,7 +568,7 @@ button:disabled {
 
 .vehicle-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 9px;
 }
 
@@ -762,8 +762,6 @@ tbody tr:hover { background: var(--row-hover); }
 
 @media (max-width: 980px) {
   .settings-layout { grid-template-columns: 1fr; }
-  #vehicles { grid-template-columns: 1fr; }
-  .vehicle-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
